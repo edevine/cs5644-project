@@ -30,17 +30,16 @@ colors = plt.cm.Spectral(np.linspace(0, 1, len(unique_labels)))
 
 for k, col in zip(unique_labels, colors):
     if k == -1:
-        # Black used for noise.
-        col = 'k'
+        continue
 
     class_member_mask = (labels == k)
 
     xy = points[class_member_mask & core_samples_mask]
-    plt.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor=col,
+    plt.plot(xy[:, 1], xy[:, 0], 'o', markerfacecolor=col,
              markeredgecolor='k', markersize=14)
 
     xy = points[class_member_mask & ~core_samples_mask]
-    plt.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor=col,
+    plt.plot(xy[:, 1], xy[:, 0], 'o', markerfacecolor=col,
              markeredgecolor='k', markersize=6)
 
 plt.title('Estimated number of clusters: %d' % num_clusters)
