@@ -42,5 +42,5 @@ for label, color in zip(unique_labels, colors):
     plt.plot(cluster[:, 1], cluster[:, 0], 'o', markerfacecolor=color, markeredgecolor='k', markersize=6)
 
 
-plt.title('Estimated number of clusters: %d' % num_clusters)
+plt.title('DBSCAN estimated clusters: %d' % num_clusters)
 plt.show()
