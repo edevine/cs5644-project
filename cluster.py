@@ -21,26 +21,16 @@ with open('taxi-data/yellow_tripdata_2015-01.csv') as file:
 points = np.array(points)
 
 db = DBSCAN(eps=0.005, min_samples=10, metric='haversine', p=None).fit(points)
-core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
-core_samples_mask[db.core_sample_indices_] = True
+
 labels = db.labels_
-unique_labels = set(labels)
-num_clusters = len(unique_labels) - (1 if -1 in labels else 0)
-colors = plt.cm.Spectral(np.linspace(0, 1, len(unique_labels)))
+unique_labels = set(labels) - set([-1])
 
-for k, col in zip(unique_labels, colors):
-    if k == -1:
-        continue
+num_clusters = len(unique_labels)
+colors = plt.cm.Spectral(np.linspace(0, 1, num_clusters))
 
-    class_member_mask = (labels == k)
-
-    xy = points[class_member_mask & core_samples_mask]
-    plt.plot(xy[:, 1], xy[:, 0], 'o', markerfacecolor=col,
-             markeredgecolor='k', markersize=14)
-
-    xy = points[class_member_mask & ~core_samples_mask]
-    plt.plot(xy[:, 1], xy[:, 0], 'o', markerfacecolor=col,
-             markeredgecolor='k', markersize=6)
+for label, color in zip(unique_labels, colors):
+    cluster = points[labels == label]
+    plt.plot(cluster[:, 1], cluster[:, 0], 'o', markerfacecolor=color, markeredgecolor='k', markersize=6)
 
 plt.title('Estimated number of clusters: %d' % num_clusters)
 plt.show()
