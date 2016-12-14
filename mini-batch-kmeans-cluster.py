@@ -1,19 +1,13 @@
 from sklearn.cluster import MiniBatchKMeans
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.patches import Polygon
 from scipy.spatial import ConvexHull
 
 points = list()
 
 with open('taxi-data/yellow_tripdata_2015-01.csv') as file:
-    i = 0
     next(file)
     for ln in file:
-        i += 1
-        # test on the first 10000. The whole file runs out of memory
-        if i > 10000:
-            break
         row = ln.strip().split(',')
         long = float(row[5])
         lat = float(row[6])
@@ -22,13 +16,13 @@ with open('taxi-data/yellow_tripdata_2015-01.csv') as file:
 
 points = np.array(points)
 
-kmeans = MiniBatchKMeans(n_clusters=12).fit(points)
+n_clusters = 30
+kmeans = MiniBatchKMeans(n_clusters=n_clusters).fit(points)
 
 labels = kmeans.labels_
-unique_labels = set(labels) - set([-1])
+unique_labels = set(labels)
 
-num_clusters = len(unique_labels)
-colors = plt.cm.Spectral(np.linspace(0, 1, num_clusters))
+colors = plt.cm.Spectral(np.linspace(0, 1, n_clusters))
 
 for label, color in zip(unique_labels, colors):
     cluster = points[labels == label]
@@ -41,6 +35,7 @@ for label, color in zip(unique_labels, colors):
 
     plt.plot(cluster[:, 1], cluster[:, 0], 'o', markerfacecolor=color, markeredgecolor='k', markersize=6)
 
-
-plt.title('Mini Batch K-Means estimated clusters: %d' % num_clusters)
+# TODO: Remove outliers
+plt.axis((-74.1,-73.7,40.6,40.9))
+plt.title('Mini Batch K-Means estimated clusters: %d' % n_clusters)
 plt.show()
