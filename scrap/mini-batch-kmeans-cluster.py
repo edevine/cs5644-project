@@ -23,8 +23,8 @@ for boro in boros:
 
 # Read taxi data
 points = list()
-for filename in os.listdir('taxi-data'):
-    with open(os.path.join('taxi-data', filename)) as file:
+for filename in os.listdir('taxi-data/2015'):
+    with open(os.path.join('taxi-data/2015', filename)) as file:
         next(file)
         for ln in file:
             row = ln.strip().split(',')

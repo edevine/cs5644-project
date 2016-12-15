@@ -63,8 +63,8 @@ def find_boro(point):
     return -1
 
 
-for filename in os.listdir('taxi-data'):
-    with open(os.path.join('taxi-data', filename)) as file:
+for filename in os.listdir('taxi-data/2015'):
+    with open(os.path.join('taxi-data/2015', filename)) as file:
         next(file)
         count = 0
         for ln in file:

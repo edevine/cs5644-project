@@ -6,7 +6,7 @@ from scipy.spatial import ConvexHull
 
 points = list()
 
-with open('../taxi-data/yellow_tripdata_2015-01.csv') as file:
+with open('taxi-data/2015/yellow_tripdata_2015-01.csv') as file:
     i = 0
     next(file)
     for ln in file:
