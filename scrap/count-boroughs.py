@@ -57,8 +57,10 @@ with open('geo-data/borough-boundaries.json') as file:
 
 boros = map(toBorough, boroBoundaries['features'])
 boros.sort(key=toBoroKey)
-borosPoints = [[] for _ in boros]
-notFoundPoints = []
+borosPickupPoints = [[] for _ in boros]
+borosDropoffPoints = [[] for _ in boros]
+notFoundPickupPoints = []
+notFoundDropoffPoints = []
 handles = []
 colors = plt.cm.Spectral(np.linspace(0, 1, len(boros)))
 
@@ -77,14 +79,21 @@ for filename in os.listdir('taxi-data/2015'):
         for ln in file:
             if lineCount % resolution == 0:
                 row = ln.strip().split(',')
-                long = float(row[5])
-                lat = float(row[6])
-                point = (long, lat)
-                i = find_boro(point)
+
+                pickup = (float(row[5]), float(row[6]))
+                i = find_boro(pickup)
                 if i != -1:
-                    borosPoints[i].append(point)
+                    borosPickupPoints[i].append(pickup)
                 else:
-                    notFoundPoints.append(point)
+                    notFoundPickupPoints.append(pickup)
+                
+                dropoff = (float(row[9]), float(row[10]))
+                i = find_boro(dropoff)
+                if i != -1:
+                    borosDropoffPoints[i].append(dropoff)
+                else:
+                    notFoundDropoffPoints.append(dropoff)
+
             lineCount += 1
 
 # Draw map
@@ -102,17 +111,24 @@ for [boro, color] in zip(boros, colors):
         plt.plot(x, y, '--', color='black', lw=2)
 
 # Draw points
-for [points, color] in zip(borosPoints, colors):
+for [points, color] in zip(borosPickupPoints, colors):
     if len(points) > 0:
         x, y = zip(*points)
         plt.plot(x, y, 'o', markerfacecolor=color, markeredgecolor='black', markersize=4)
 
+for [points, color] in zip(borosDropoffPoints, colors):
+    if len(points) > 0:
+        x, y = zip(*points)
+        plt.plot(x, y, '*', markerfacecolor=color, markeredgecolor='black', markersize=4)
+
 # Draw not found points
-x, y = zip(*notFoundPoints)
+x, y = zip(*notFoundPickupPoints)
 plt.plot(x, y, 'o', markerfacecolor='red', markeredgecolor='red', markersize=6)
+x, y = zip(*notFoundDropoffPoints)
+plt.plot(x, y, '*', markerfacecolor='red', markeredgecolor='red', markersize=6)
 
 # Draw legend
-for [boro, points, color] in zip(boros, borosPoints, colors):
+for [boro, points, color] in zip(boros, borosPickupPoints, colors):
     count = len(points)
     if magnitude == 0:
         label = boro.name + ' (' + str(count) + ')'
@@ -123,9 +139,9 @@ for [boro, points, color] in zip(boros, borosPoints, colors):
     print label
 
 if magnitude == 0:
-    notFoundLabel = 'Not found (' + str(len(notFoundPoints)) + ')'
+    notFoundLabel = 'Not found (' + str(len(notFoundPickupPoints)) + ')'
 else:
-    notFoundLabel = 'Not found (' + str(len(notFoundPoints)) + 'e' + str(magnitude) + ')'
+    notFoundLabel = 'Not found (' + str(len(notFoundPickupPoints)) + 'e' + str(magnitude) + ')'
 
 handles.append(Line2D([], [], linestyle='-', color='red', marker='o', markeredgecolor='red', label=notFoundLabel, linewidth=0))
 print notFoundLabel
