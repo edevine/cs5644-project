@@ -1,12 +1,11 @@
-from sklearn.cluster import DBSCAN
+from sklearn.cluster import Birch
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.patches import Polygon
 from scipy.spatial import ConvexHull
 
 points = list()
 
-with open('taxi-data/yellow_tripdata_2015-01.csv') as file:
+with open('../taxi-data/yellow_tripdata_2015-01.csv') as file:
     i = 0
     next(file)
     for ln in file:
@@ -22,9 +21,9 @@ with open('taxi-data/yellow_tripdata_2015-01.csv') as file:
 
 points = np.array(points)
 
-db = DBSCAN(eps=0.005, min_samples=10, metric='haversine', p=None).fit(points)
+birch = Birch(threshold=0.05, n_clusters=12).fit(points)
 
-labels = db.labels_
+labels = birch.labels_
 unique_labels = set(labels) - set([-1])
 
 num_clusters = len(unique_labels)
@@ -42,5 +41,5 @@ for label, color in zip(unique_labels, colors):
     plt.plot(cluster[:, 1], cluster[:, 0], 'o', markerfacecolor=color, markeredgecolor='k', markersize=6)
 
 
-plt.title('DBSCAN estimated clusters: %d' % num_clusters)
+plt.title('Birch estimated clusters: %d' % num_clusters)
 plt.show()

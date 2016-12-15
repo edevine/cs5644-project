@@ -1,4 +1,4 @@
-from sklearn.cluster import KMeans
+from sklearn.cluster import DBSCAN
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
@@ -6,7 +6,7 @@ from scipy.spatial import ConvexHull
 
 points = list()
 
-with open('taxi-data/yellow_tripdata_2015-01.csv') as file:
+with open('../taxi-data/yellow_tripdata_2015-01.csv') as file:
     i = 0
     next(file)
     for ln in file:
@@ -22,9 +22,9 @@ with open('taxi-data/yellow_tripdata_2015-01.csv') as file:
 
 points = np.array(points)
 
-kmeans = KMeans(n_clusters=12).fit(points)
+db = DBSCAN(eps=0.005, min_samples=10, metric='haversine', p=None).fit(points)
 
-labels = kmeans.labels_
+labels = db.labels_
 unique_labels = set(labels) - set([-1])
 
 num_clusters = len(unique_labels)
@@ -42,5 +42,5 @@ for label, color in zip(unique_labels, colors):
     plt.plot(cluster[:, 1], cluster[:, 0], 'o', markerfacecolor=color, markeredgecolor='k', markersize=6)
 
 
-plt.title('K-Means estimated clusters: %d' % num_clusters)
+plt.title('DBSCAN estimated clusters: %d' % num_clusters)
 plt.show()
