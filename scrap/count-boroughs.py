@@ -1,3 +1,4 @@
+import sys
 import os
 import json
 import matplotlib.pyplot as plt
@@ -7,6 +8,13 @@ from matplotlib.lines import Line2D
 from matplotlib.collections import PathCollection
 import numpy as np
 from scipy.spatial import ConvexHull
+
+try:
+    magnitude = int(sys.argv[1])
+except:
+    magnitude = 3
+
+resolution = 10**magnitude
 
 # Sort Boroughs by expected occurances (desc):
 keyDict = {
@@ -62,25 +70,22 @@ def find_boro(point):
             return i
     return -1
 
-
+lineCount = 0
 for filename in os.listdir('taxi-data/2015'):
     with open(os.path.join('taxi-data/2015', filename)) as file:
         next(file)
-        count = 0
         for ln in file:
-            count += 1
-            if count > 500000: break
-            row = ln.strip().split(',')
-            long = float(row[5])
-            lat = float(row[6])
-            point = (long, lat)
-            i = find_boro(point)
-            if i != -1:
-                borosPoints[i].append(point)
-            else:
-                notFoundPoints.append(point)
-    break
-
+            if lineCount % resolution == 0:
+                row = ln.strip().split(',')
+                long = float(row[5])
+                lat = float(row[6])
+                point = (long, lat)
+                i = find_boro(point)
+                if i != -1:
+                    borosPoints[i].append(point)
+                else:
+                    notFoundPoints.append(point)
+            lineCount += 1
 
 # Draw map
 for [boro, color] in zip(boros, colors):
@@ -88,7 +93,7 @@ for [boro, color] in zip(boros, colors):
         for line in shape:
             x, y = zip(*line)
             plt.fill(x, y, color=color, alpha = 0.5)
-            #plt.plot(x, y, '-', color='black', lw=1)
+            plt.plot(x, y, '-', color=color, lw=1)
 
 # Draw detection paths
 for [boro, color] in zip(boros, colors):
@@ -109,15 +114,23 @@ plt.plot(x, y, 'o', markerfacecolor='red', markeredgecolor='red', markersize=6)
 # Draw legend
 for [boro, points, color] in zip(boros, borosPoints, colors):
     count = len(points)
-    label = boro.name + ' (' + str(count) + ')'
+    if magnitude == 0:
+        label = boro.name + ' (' + str(count) + ')'
+    else:
+        label = boro.name + ' (' + str(count) + 'e' + str(magnitude) + ')'
+        
     handles.append(mpatches.Patch(color=color, label=label))
-    print boro.name, count
+    print label
 
-notFoundLabel = 'Not found (' + str(len(notFoundPoints)) + ')'
+if magnitude == 0:
+    notFoundLabel = 'Not found (' + str(len(notFoundPoints)) + ')'
+else:
+    notFoundLabel = 'Not found (' + str(len(notFoundPoints)) + 'e' + str(magnitude) + ')'
+
 handles.append(Line2D([], [], linestyle='-', color='red', marker='o', markeredgecolor='red', label=notFoundLabel, linewidth=0))
-print 'Not found', len(notFoundPoints)
+print notFoundLabel
 
 plt.axis((-74.3,-73.7,40.5,40.9))
 plt.legend(loc='upper left', handles=handles)
-plt.title('Cluster by geometry')
+plt.title('Taxi Pickup Locations. (Point = ' + str(resolution) + ')')
 plt.show()
