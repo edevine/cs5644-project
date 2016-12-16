@@ -104,8 +104,8 @@ for filename in os.listdir('taxi-data/2015'):
             if lineCount % resolution == 0:
                 row = ln.strip().split(',')
                 datetime = row[1]
-                long = round(float(row[5]), 3)
-                lat = round(float(row[6]), 3)
+                long = float(row[5])
+                lat = float(row[6])
                 fare = float(row[18])
                 pickup = (long, lat)
                 
