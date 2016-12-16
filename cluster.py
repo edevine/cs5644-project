@@ -68,9 +68,9 @@ class Cluster:
         self.records = records
 
 class Record:
-    def __init__(self, date, boroName, fare, pickup):
+    def __init__(self, datetime, boroName, fare, pickup):
         self.boroName = boroName
-        self.date = date
+        self.datetime = datetime
         self.fare = fare
         self.pickup = pickup
 
@@ -103,7 +103,7 @@ for filename in os.listdir('taxi-data/2015'):
         for ln in file:
             if lineCount % resolution == 0:
                 row = ln.strip().split(',')
-                date = row[1].split(' ')[0]
+                datetime = row[1]
                 long = round(float(row[5]), 3)
                 lat = round(float(row[6]), 3)
                 fare = float(row[18])
@@ -111,7 +111,7 @@ for filename in os.listdir('taxi-data/2015'):
                 
                 boro_name = find_boro(pickup)
                 if boro_name is not None:
-                    record = Record(date, boro_name, fare, (long, lat))
+                    record = Record(datetime, boro_name, fare, (long, lat))
                     boroRecords[boro_name].append(record)
             lineCount += 1
 
@@ -175,7 +175,9 @@ for [cluster, color] in zip(clusters, colors):
 grouped_records = dict()
 for cluster in clusters:
     for record in cluster.records:
-        key = (record.date, record.boroName, cluster.center)
+        date, time = record.datetime.split(' ')
+        time = time.split(':')[0] + ':00'
+        key = (date, time, record.boroName, cluster.center)
         if key not in grouped_records:
             grouped_records[key] = (record.fare, 1)
         else:
@@ -183,18 +185,21 @@ for cluster in clusters:
             count = grouped_records[key][1] + 1
             grouped_records[key] = (fare, count)
 
+# Create output
 file_lines = []
 for key in grouped_records:
     value = grouped_records[key]
-    file_lines.append([key[0], key[1], str(key[2][0]), str(key[2][1]), str(value[0]), str(value[1] * resolution)])
+    file_lines.append([key[0], key[1], key[2], str(key[3][0]), str(key[3][1]), str(value[0]), str(value[1] * resolution)])
 
 file_lines.sort(key=lambda line: line[0])
 
+# Write CSV
 with open('out/clustered_taxi_data.csv', 'w+') as file:
-    header = ['Date', 'Borough', 'Long', 'Lat', 'Fare', 'Count']
+    header = ['Date', 'Time' 'Borough', 'Long', 'Lat', 'Fare', 'Count']
     file.write(','.join(header) + '\n')
     for line in file_lines:
         file.write(', '.join(line) + '\n')
 
-plt.title('Taxi Pickup Locations. (Point = ' + str(resolution) + ')')
+# Show visulization
+plt.title('2015 Taxi Pickup Locations. (Point = ' + str(resolution) + ')')
 plt.show()
