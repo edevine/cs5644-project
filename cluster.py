@@ -9,6 +9,8 @@ from matplotlib.collections import PathCollection
 import numpy as np
 from sklearn.cluster import MiniBatchKMeans
 from scipy.spatial import ConvexHull
+from collections import namedtuple
+import csv
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -33,6 +35,7 @@ keyDict = {
     'Bronx': 3,
     'Staten Island': 4
 }
+
 def toBoroKey(boro):
     return keyDict[boro.name]
 
@@ -41,6 +44,7 @@ def toPathLen(path):
 
 class Borough:
     def __init__(self, name, geoCoord):
+        self.key = keyDict[name]
         self.name = name
         self.lowResPaths = []
         self.geoCoord = geoCoord
@@ -59,9 +63,16 @@ class Borough:
         return False
 
 class Cluster:
-    def __init__(self, center, points):
+    def __init__(self, center, records):
         self.center = center
-        self.points = points
+        self.records = records
+
+class Record:
+    def __init__(self, date, boroName, fare, pickup):
+        self.boroName = boroName
+        self.date = date
+        self.fare = fare
+        self.pickup = pickup
 
 def toBorough(feature):
     return Borough(feature['properties']['BoroName'], feature['geometry']['coordinates'])
@@ -72,15 +83,17 @@ with open('geo-data/borough-boundaries.json') as file:
 boros = map(toBorough, boroBoundaries['features'])
 boros.sort(key=toBoroKey)
 boros.pop()
-borosPoints = [[] for _ in boros]
+boroRecords = dict()
+for boro in boros:
+    boroRecords[boro.name] = []
 
 def find_boro(point):
     if point[0] == 0 or point[1] == 0:
-        return -1
-    for [i, boro] in enumerate(boros):
+        return None
+    for boro in boros:
         if (boro.inLowResPath(point)):
-            return i
-    return -1
+            return boro.name
+    return None
 
 # Read taxi data
 lineCount = 0
@@ -90,68 +103,64 @@ for filename in os.listdir('taxi-data/2015'):
         for ln in file:
             if lineCount % resolution == 0:
                 row = ln.strip().split(',')
-                pickup = (float(row[5]), float(row[6]))
+                date = row[1].split(' ')[0]
+                long = round(float(row[5]), 3)
+                lat = round(float(row[6]), 3)
+                fare = float(row[18])
+                pickup = (long, lat)
                 
-                i = find_boro(pickup)
-                if i != -1:
-                    borosPoints[i].append(pickup)
-
-                #dropoff = (float(row[9]), float(row[10]))
-                # i = find_boro(dropoff)
-                # if i != -1:
-                #     borosPoints[i].append(dropoff)
-                # else:
-                #     notFoundPoints.append(dropoff)
+                boro_name = find_boro(pickup)
+                if boro_name is not None:
+                    record = Record(date, boro_name, fare, (long, lat))
+                    boroRecords[boro_name].append(record)
             lineCount += 1
 
-# Draw map
-for boro in boros:
-    for shape in boro.geoCoord:
-        for line in shape:
-            x, y = zip(*line)
-            plt.fill(x, y, color='black', alpha=0.3)
-            plt.plot(x, y, '-', color='black', lw=1)
-
-# Draw detection paths
-# for [boro, color] in zip(boros, colors):
-#     for path in boro.lowResPaths:
-#         x, y = zip(*path.vertices)
-#         plt.plot(x, y, '--', color='black', lw=2)
-
-
-
-totalPoints = sum(len(points) for points in borosPoints)
+# Compute clusters
+totalRecords = sum(len(boroRecords[name]) for name in boroRecords)
 clusters = []
-for [i, points] in enumerate(borosPoints):
-    if (len(points) == 0): continue
+for boro in boros:
+    records = boroRecords[boro.name]
+    if (len(records) <= 2): continue
 
-    boro_n_clusters = int(round((float(len(points)) / totalPoints) * n_clusters))
+    boro_n_clusters = int(round((float(len(records)) / totalRecords) * n_clusters))
 
     if boro_n_clusters < 2:
         boro_n_clusters = 2
     
+    points = [record.pickup for record in records]
+
     kmeans = MiniBatchKMeans(n_clusters=boro_n_clusters).fit(points)
     cluster_centers = kmeans.cluster_centers_
     labels = kmeans.labels_
     cluster_labels = set(labels)
 
     for cluster_label in cluster_labels:
-        cluster_points = []
+        cluster_records = []
         for [i, label] in enumerate(labels):
             if label == cluster_label:
-                cluster_points.append(points[i])
+                cluster_records.append(records[i])
 
         center = cluster_centers[label]
 
-        clusters.append(Cluster(center, cluster_points))
+        clusters.append(Cluster((center[0], center[1]), cluster_records))
 
+# Draw map
+for boro in boros:
+    for shape in boro.geoCoord:
+        for line in shape:
+            x, y = zip(*line)
+            plt.fill(x, y, color='black', alpha=0.2)
+            plt.plot(x, y, '-', color='black', lw=1)
+
+# Draw clusters
 colors = plt.cm.Spectral(np.linspace(0, 1, len(clusters)))
 
 for [cluster, color] in zip(clusters, colors):
+    cluster_points = [record.pickup for record in cluster.records]
     try:
-        hull = ConvexHull(cluster.points)
+        hull = ConvexHull(cluster_points)
         
-        hull_points = [cluster.points[i] for i in hull.vertices]
+        hull_points = [cluster_points[i] for i in hull.vertices]
         hull_points.append(hull_points[0])
         x, y = zip(*hull_points)
         plt.fill(x, y, color=color, alpha=0.5)
@@ -159,9 +168,33 @@ for [cluster, color] in zip(clusters, colors):
     except:
         print 'Could not run ConvexHull'
 
-    x, y = zip(*cluster.points)
+    x, y = zip(*cluster_points)
     plt.plot(x, y, 'o', markerfacecolor=color, markeredgecolor='black', markersize=4)
 
-plt.axis((-74.1,-73.7,40.5,40.9))
+# Sum clusters
+grouped_records = dict()
+for cluster in clusters:
+    for record in cluster.records:
+        key = (record.date, record.boroName, cluster.center)
+        if key not in grouped_records:
+            grouped_records[key] = (record.fare, 1)
+        else:
+            fare = grouped_records[key][0] + record.fare
+            count = grouped_records[key][1] + 1
+            grouped_records[key] = (fare, count)
+
+file_lines = []
+for key in grouped_records:
+    value = grouped_records[key]
+    file_lines.append([key[0], key[1], str(key[2][0]), str(key[2][1]), str(value[0]), str(value[1] * resolution)])
+
+file_lines.sort(key=lambda line: line[0])
+
+with open('out/clustered_taxi_data.csv', 'w+') as file:
+    header = ['Date', 'Borough', 'Long', 'Lat', 'Fare', 'Count']
+    file.write(','.join(header) + '\n')
+    for line in file_lines:
+        file.write(', '.join(line) + '\n')
+
 plt.title('Taxi Pickup Locations. (Point = ' + str(resolution) + ')')
 plt.show()
